@@ -215,3 +215,84 @@ openssl x509 -req -days 365 -in request.csr -signkey private.key -out certificat
 ```
 openssl req -newkey rsa:2048 -nodes -keyout private.key -x509 -days 365 -out certificate.crt
 ```
+
+
+# Wireguard-MARK
+
+Server:
+/etc/nftables/milan.nft
+```
+table ip milan {
+        chain prerouting_mangle {
+                type filter hook prerouting priority mangle; policy accept;
+                ip daddr X.X.X.X iifname "ens192" udp dport 123 counter meta mark set 0x64
+        }
+
+        chain prerouting_dstnat {
+                type nat hook prerouting priority dstnat; policy accept;
+                ip daddr X.X.X.X iifname "ens192" udp dport 123 counter dnat to 162.159.192.1:2408
+        }
+
+        chain postrouing_srcnat {
+                type nat hook postrouting priority srcnat; policy accept;
+                oifname "milan" counter masquerade
+        }
+}
+
+```
+config.json
+```
+{
+  "log": {
+    "loglevel": "info"
+  },
+  "inbounds": [
+    {
+      "port": 4443,
+      "listen": "0.0.0.0",
+      "protocol": "vmess",
+      "settings": {
+        "clients": [
+          {
+            "id": "9fcb717d-b4c6-45b2-9aec-07d01fbef2b3",
+            "alterId": 64,
+            "security": "zero"
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "tlsSettings": {
+          "certificates": [
+            {
+              "certificateFile": "/root/certificate.crt",
+              "keyFile": "/root/private.key"
+            }
+          ],
+          "allowInsecure": true,  // Allow insecure connections
+          "serverName": "www.google.com"
+        },
+        "wsSettings": {
+          "path": "/vmess-ws-public",
+          "headers": {
+            "Host": "www.google.com"
+          }
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {},
+      "streamSettings": {
+        "sockopt": {
+          "mark": 100
+        }
+      }
+    }
+  ]
+}
+
+```

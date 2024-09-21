@@ -296,3 +296,21 @@ config.json
 }
 
 ```
+# WS conf for apache2
+```
+<VirtualHost *:80>
+    # change your domain
+    ServerName giris.eba.gov.tr
+
+    # here configure how apache treat your incoming traffic. 
+    # It will redirect websocket traffic to V2ray, but preserve other traffic for your site
+    RewriteEngine On
+    RewriteCond %{HTTP:Upgrade} =websocket [NC]
+    RewriteRule /(.*) ws://localhost:65535/$1 [P,L]
+
+    # {path} must be the same in V2Ray server config
+    ProxyPass / http://127.0.0.1:65535
+    ProxyPassReverse / http://127.0.0.1:65535
+
+</VirtualHost>
+```
